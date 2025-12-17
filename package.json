@@ -10,6 +10,8 @@
     "preprocess:dev": "npx tsc && node dist/LogPreprocessor.js",
     "parse": "node dist/core/SignalParser.js",
     "parse:dev": "npx tsc && node dist/core/SignalParser.js",
+    "process": "node dist/script.js",
+    "process:dev": "npx tsc && node dist/script.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

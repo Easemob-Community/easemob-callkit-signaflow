@@ -100,6 +100,72 @@ app.post('/api/visualize', (req, res) => {
   });
 });
 
+// API路由：从Mermaid数据生成HTML
+app.post('/api/mermaid-to-html', async (req, res) => {
+  try {
+    const { mermaidContent, outputFileName } = req.body;
+    
+    if (!mermaidContent) {
+      return res.status(400).json({ error: '缺少mermaidContent参数' });
+    }
+    
+    // 生成HTML内容
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mermaid序列图可视化报告</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #007bff;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+    .mermaid-container {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mermaid序列图可视化报告</h1>
+  <div class="mermaid-container">
+    <div class="mermaid">${mermaidContent}</div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</body>
+</html>
+    `;
+    
+    // 设置响应头
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename="${outputFileName || 'mermaid_report.html'}"`);
+    
+    // 返回HTML内容
+    res.send(htmlContent);
+    
+  } catch (error) {
+    console.error('生成HTML报告失败:', error);
+    res.status(500).json({ error: '生成HTML报告失败' });
+  }
+});
+
 // API路由：解析日志
 app.post('/api/parse', (req, res) => {
   res.json({
