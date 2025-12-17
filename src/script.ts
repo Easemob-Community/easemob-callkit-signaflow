@@ -33,12 +33,13 @@ async function main() {
       console.log(`已创建output目录: ${outputDir}`);
     }
     
-    // 读取output目录下的所有.txt文件
-    const files = await readdir(outputDir);
+    // 读取logInput目录下的所有.txt文件
+    const logInputDir = path.join(__dirname, '../logInput');
+    const files = await readdir(logInputDir);
     let processedFiles: string[] = [];
     
     for (const file of files) {
-      const filePath = path.join(outputDir, file);
+      const filePath = path.join(logInputDir, file);
       const fileStats = await stat(filePath);
       if (fileStats.isFile() && path.extname(file).toLowerCase() === '.txt') {
         processedFiles.push(filePath);
@@ -46,7 +47,7 @@ async function main() {
     }
     
     if (processedFiles.length === 0) {
-      console.error('在output目录下未找到可处理的.txt日志文件');
+      console.error('在logInput目录下未找到可处理的.txt日志文件');
       process.exit(1);
     }
     

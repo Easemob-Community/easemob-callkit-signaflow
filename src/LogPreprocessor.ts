@@ -205,7 +205,18 @@ export class LogPreprocessor {
 // 示例用法
 if (import.meta.url === `file://${process.argv[1]}`) {
   const preprocessor = new LogPreprocessor();
-  const targetPath = process.argv[2] || process.cwd();
+  
+  // 获取默认的logInput目录路径
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const defaultLogInputDir = path.join(__dirname, '../logInput');
+  
+  // 确保logInput目录存在
+  if (!fs.existsSync(defaultLogInputDir)) {
+    fs.mkdirSync(defaultLogInputDir, { recursive: true });
+  }
+  
+  const targetPath = process.argv[2] || defaultLogInputDir;
   
   // 检查目标路径是文件还是目录
   stat(targetPath)
