@@ -16,6 +16,8 @@ export class Visualizer {
     this.parser = parser;
   }
 
+
+
   /**
    * 生成HTML报告
    * @returns HTML字符串
@@ -40,6 +42,59 @@ export class Visualizer {
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
+    }
+    
+    /* 选项卡样式 */
+    .tab-container {
+      margin: 20px 0;
+    }
+    
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background: #e9ecef;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+    
+    .tab-btn.active {
+      background: #007bff;
+      color: white;
+    }
+    
+    .tab-btn:hover:not(.active) {
+      background: #dee2e6;
+    }
+    
+    /* 搜索框样式 */
+    .search-container {
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .search-input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      flex: 1;
+      max-width: 400px;
+    }
+    
+    .search-input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
     }
     h1 {
       color: #007bff;
@@ -79,6 +134,7 @@ export class Visualizer {
       border-radius: 8px;
       background: #fff;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      display: none;
     }
     .call-header {
       display: flex;
@@ -146,6 +202,61 @@ export class Visualizer {
       color: #666;
       font-size: 12px;
     }
+    /* 选项卡样式 */
+    .tab-container {
+      margin: 20px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: -1px;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      border: 1px solid #ddd;
+      background: #f8f9fa;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #666;
+      transition: all 0.3s;
+    }
+    .tab-btn.active {
+      background: #fff;
+      border-bottom: 1px solid #fff;
+      color: #007bff;
+      border-top: 2px solid #007bff;
+    }
+    /* 搜索框样式 */
+    .search-container {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .search-container label {
+      font-weight: 500;
+      color: #666;
+    }
+    .search-input {
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      width: 300px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .search-input:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+    }
+    /* 通话类型显示控制 */
+    .call-section.oneToOne { display: block; }
+    .call-section.group { display: block; }
+    .call-section.unknown { display: block; }
   </style>
 </head>
 <body>
@@ -172,11 +283,28 @@ export class Visualizer {
   </div>
 
   <h2>通话会话详情</h2>
+  
+  <!-- 选项卡 -->
+  <div class="tab-container">
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="all">全部</button>
+      <button class="tab-btn" data-tab="oneToOne">一对一</button>
+      <button class="tab-btn" data-tab="group">群组</button>
+      <button class="tab-btn" data-tab="unknown">未知</button>
+    </div>
+  </div>
+  
+  <!-- 搜索框 -->
+  <div class="search-container">
+    <label for="callIdSearch">搜索通话ID:</label>
+    <input type="text" id="callIdSearch" class="search-input" placeholder="输入通话ID进行模糊搜索...">
+  </div>
+  
   ${allCalls.map(([callId, logs]) => {
     const callType = this.parser.getCallType(callId) || 'unknown';
     const sortedLogs = [...logs].sort((a, b) => a.ts - b.ts);
     return `
-    <div class="call-section">
+    <div class="call-section" data-callid="${callId}" data-calltype="${callType}">
       <div class="call-header">
         <h3>通话ID: ${callId}</h3>
         <div class="call-meta">
@@ -196,7 +324,7 @@ export class Visualizer {
         <div class="log-item">
           <span class="log-action">${log.action}</span>
           <span> from ${log.from} to ${log.to} </span>
-          <span class="log-time">(${new Date(log.ts).toLocaleString()})</span>
+          <span class="log-time">(${this.formatTimestamp(log.ts)})</span>
         </div>`).join('')}
       </div>
     </div>`;
@@ -205,10 +333,76 @@ export class Visualizer {
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script>
     mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    
+    // 获取DOM元素
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const searchInput = document.getElementById('callIdSearch');
+    const callSections = document.querySelectorAll('.call-section');
+    
+    // 选项卡切换功能
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        // 移除所有按钮的active类
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        // 给当前按钮添加active类
+        button.classList.add('active');
+        // 触发过滤
+        filterCalls();
+      });
+    });
+    
+    // 搜索功能
+    searchInput.addEventListener('input', filterCalls);
+    
+    // 过滤通话会话的函数
+    function filterCalls() {
+      // 获取当前选中的选项卡
+      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+      // 获取搜索关键词
+      const searchTerm = searchInput.value.toLowerCase();
+      
+      // 遍历所有通话会话
+      callSections.forEach(section => {
+        const callId = section.dataset.callid.toLowerCase();
+        const callType = section.dataset.calltype;
+        
+        // 检查是否匹配选项卡和搜索关键词
+        const matchesTab = activeTab === 'all' || callType === activeTab;
+        const matchesSearch = callId.includes(searchTerm);
+        
+        // 显示或隐藏会话
+        if (matchesTab && matchesSearch) {
+          section.style.display = 'block';
+        } else {
+          section.style.display = 'none';
+        }
+      });
+      
+      // 重新渲染Mermaid图表
+      mermaid.contentLoaded();
+    }
   </script>
 </body>
 </html>
     `;
+  }
+
+  /**
+   * 格式化时间戳
+   * 将毫秒级时间戳转换为年 月 日 24小时制 分钟:秒.毫秒格式
+   * @param ts 毫秒级时间戳
+   * @returns 格式化后的时间字符串，例如：2025 12 17 14:46:42.106
+   */
+  private formatTimestamp(ts: number): string {
+    const date = new Date(ts);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+    return `${year} ${month} ${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
   }
 
   /**
@@ -236,7 +430,7 @@ export class Visualizer {
 
     // 添加信令交互
     sortedLogs.forEach(log => {
-      const time = new Date(log.ts).toLocaleTimeString();
+      const time = this.formatTimestamp(log.ts);
       mermaid += `  ${log.from}->>${log.to}: ${log.action} (${time})\n`;
     });
 
