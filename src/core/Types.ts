@@ -1,3 +1,6 @@
+//log中为rtc信令的唯一标识
+export type SignalingId = 'rtcCallWithAgora';
+
 // 通话类型枚举
 export enum CallType {
   Audio = 'CallTypeAudio',

@@ -39,3 +39,9 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# Project specific
+log.txt
+logInput/
+callIdGroupedLogs.txt
+{b62_}.gz
