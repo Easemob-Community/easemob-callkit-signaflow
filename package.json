@@ -1,0 +1,25 @@
+{
+  "name": "easemob-callkit-signaflow",
+  "version": "1.0.0",
+  "description": "node编写的callkit信令跟踪可视化工具库",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Easemob-Community/easemob-callkit-signaflow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Easemob-Community/easemob-callkit-signaflow/issues"
+  },
+  "homepage": "https://github.com/Easemob-Community/easemob-callkit-signaflow#readme",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "express": "^5.2.1",
+    "typescript": "^5.9.3"
+  }
+}
