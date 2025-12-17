@@ -323,12 +323,18 @@ export class SignalParser {
             this.rtcCallLogs.push(logInfo);
             count++;
             
-            // 按callId分组存储
+            // 按callId分组存储，并按时间戳排序
             const callId = logInfo.callId;
             if (!this.callIdToLogsMap.has(callId)) {
               this.callIdToLogsMap.set(callId, []);
             }
-            this.callIdToLogsMap.get(callId)?.push(logInfo);
+            const logs = this.callIdToLogsMap.get(callId);
+            if (logs) {
+              logs.push(logInfo);
+              // 按时间戳升序排序
+              logs.sort((a, b) => a.ts - b.ts);
+              this.callIdToLogsMap.set(callId, logs);
+            }
           } else {
             console.warn(`无法提取日志行的关键信息: ${line.substring(0, 100)}...`);
           }
