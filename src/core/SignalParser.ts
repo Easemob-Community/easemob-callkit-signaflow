@@ -66,7 +66,8 @@ export class SignalParser {
       let count = 0;
 
       for (const line of lines) {
-        if (line.includes('rtcCallWithAgora')) {
+        // 增加匹配条件：必须包含rtcCallWithAgora和特定的command内容
+        if (line.includes('rtcCallWithAgora') && line.includes('contents : [ { contenttype : COMMAND, action : rtcCall } ]')) {
           this.rtcCallLogs.push(line);
           count++;
           
