@@ -16,7 +16,9 @@ export interface ParsedLogInfo {
   to: string;
   action: string;
   ts: number;
+  msgTimestamp?: number; // 消息的timestamp值
   rawLog?: string; // 保留原始日志，方便调试
+  logTimestamp?: string; // 日志打印时间
 }
 
 
@@ -31,6 +33,8 @@ export class SignalParser {
   private groupCallMap: Map<string, ParsedLogInfo[]>;
   private unknownCallMap: Map<string, ParsedLogInfo[]>;
   private callTypeMap: Map<string, 'oneToOne' | 'group' | 'unknown'>;
+  private coreVersion: string | null = null;
+  private gitCommit: string | null = null;
 
   constructor() {
     this.rtcCallLogs = [];
@@ -105,6 +109,28 @@ export class SignalParser {
   }
 
   /**
+   * 从日志行中提取日志打印时间
+   * @param logLine 日志行
+   * @returns 日志打印时间或undefined
+   */
+  private extractLogTimestamp(logLine: string): string | undefined {
+    const timestampRegex = /^\[(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}:\d{3}\(\d+\))\]:/;
+    const match = logLine.match(timestampRegex);
+    return match ? match[1] : undefined;
+  }
+
+  /**
+   * 从日志行中提取消息的timestamp值
+   * @param logLine 日志行
+   * @returns 消息的timestamp值或undefined
+   */
+  private extractMsgTimestamp(logLine: string): number | undefined {
+    const msgTimestampRegex = /timestamp\s*:\s*(\d+)/;
+    const match = logLine.match(msgTimestampRegex);
+    return match ? parseInt(match[1], 10) : undefined;
+  }
+
+  /**
    * 从日志行中提取所有关键信息
    * @param logLine 日志行
    * @returns 提取后的日志关键信息或null
@@ -115,6 +141,8 @@ export class SignalParser {
     const to = this.extractTo(logLine);
     const action = this.extractAction(logLine);
     const ts = this.extractTs(logLine);
+    const logTimestamp = this.extractLogTimestamp(logLine);
+    const msgTimestamp = this.extractMsgTimestamp(logLine);
 
     if (callId && from && to && action && ts !== null) {
       return {
@@ -123,7 +151,9 @@ export class SignalParser {
         to,
         action,
         ts,
-        rawLog: logLine
+        msgTimestamp,
+        rawLog: logLine,
+        logTimestamp
       };
     }
 
@@ -223,6 +253,22 @@ export class SignalParser {
   }
 
   /**
+   * 获取SDK核心版本号
+   * @returns SDK核心版本号或null
+   */
+  getCoreVersion(): string | null {
+    return this.coreVersion;
+  }
+
+  /**
+   * 获取Git提交信息
+   * @returns Git提交信息或null
+   */
+  getGitCommit(): string | null {
+    return this.gitCommit;
+  }
+
+  /**
    * 获取通话类型统计信息
    * @returns 包含各类型通话数量的对象
    */
@@ -312,6 +358,22 @@ export class SignalParser {
       let count = 0;
 
       for (const line of lines) {
+        // 提取版本信息
+        if (line.includes('core version:')) {
+          const versionRegex = /core version:\s*(\S+)/;
+          const match = line.match(versionRegex);
+          if (match) {
+            this.coreVersion = match[1];
+          }
+        }
+        if (line.includes('git commit:')) {
+          const commitRegex = /git commit:\s*(\S+)/;
+          const match = line.match(commitRegex);
+          if (match) {
+            this.gitCommit = match[1];
+          }
+        }
+        
         // 增加匹配条件：必须包含rtcCallWithAgora，并且是COMMAND类型的rtcCall信令或TEXT类型的邀请信令
         if (line.includes('rtcCallWithAgora') && 
             (line.includes('contents : [ { contenttype : COMMAND, action : rtcCall } ]') || 
@@ -331,8 +393,12 @@ export class SignalParser {
             const logs = this.callIdToLogsMap.get(callId);
             if (logs) {
               logs.push(logInfo);
-              // 按时间戳升序排序
-              logs.sort((a, b) => a.ts - b.ts);
+              // 按msgTimestamp升序排序，如果msgTimestamp不存在则使用ts作为备选
+              logs.sort((a, b) => {
+                const t1 = a.msgTimestamp || a.ts;
+                const t2 = b.msgTimestamp || b.ts;
+                return t1 - t2;
+              });
               this.callIdToLogsMap.set(callId, logs);
             }
           } else {
@@ -431,7 +497,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       
       // 为每个callId生成简单的序列图
       callIdMap.forEach((logs, callId) => {
-        const sortedLogs = [...logs].sort((a, b) => a.ts - b.ts);
+        const sortedLogs = [...logs].sort((a, b) => {
+        const t1 = a.msgTimestamp || a.ts;
+        const t2 = b.msgTimestamp || b.ts;
+        return t1 - t2;
+      });
         
         console.log(`  participant ${sortedLogs[0].from}`);
         console.log(`  participant ${sortedLogs[0].to}`);

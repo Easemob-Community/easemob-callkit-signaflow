@@ -102,6 +102,7 @@ export class Visualizer {
       color: #007bff;
       border-bottom: 2px solid #eee;
       padding-bottom: 10px;
+      text-align: center;
     }
     h2 {
       color: #555;
@@ -204,6 +205,39 @@ export class Visualizer {
       color: #666;
       font-size: 12px;
     }
+    
+    /* 原始日志展示样式 */
+    .raw-log-container {
+      margin-top: 8px;
+      padding: 8px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-width: 100%;
+      border: 1px solid #e9ecef;
+    }
+    .raw-log {
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin: 0;
+      color: #333;
+      line-height: 1.5;
+    }
+    .raw-log::-webkit-scrollbar {
+      height: 8px;
+    }
+    .raw-log::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    .raw-log::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    .raw-log::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
 
 
     /* 通话类型显示控制 */
@@ -214,6 +248,7 @@ export class Visualizer {
 </head>
 <body>
   <h1>环信CallKit信令可视化报告</h1>
+  <h2>SDK版本: ${this.parser.getCoreVersion() || '未知'} | Git Commit: ${this.parser.getGitCommit() || '未知'}</h2>
   
   <h2>整体统计</h2>
   <div class="statistics">
@@ -253,7 +288,11 @@ export class Visualizer {
   
   ${allCalls.map(([callId, logs]) => {
     const callType = this.parser.getCallType(callId) || 'unknown';
-    const sortedLogs = [...logs].sort((a, b) => a.ts - b.ts);
+    const sortedLogs = [...logs].sort((a, b) => {
+      const t1 = a.msgTimestamp || a.ts;
+      const t2 = b.msgTimestamp || b.ts;
+      return t1 - t2;
+    });
     return `
     <div class="call-section ${callType}" id="${callId}" data-callid="${callId}" data-calltype="${callType}">
       <div class="call-header">
@@ -270,12 +309,14 @@ export class Visualizer {
       </div>
       
       <h4>信令日志详情</h4>
+      <!-- 说明：msgTimestamp 是消息的timestamp值，ts 是信令内的时间戳 -->
       <div class="log-list">
         ${sortedLogs.map((log, index) => `
         <div class="log-item">
           <span class="log-action">${log.action}</span>
           <span> from ${log.from} to ${log.to} </span>
-          <span class="log-time">(${this.formatTimestamp(log.ts)})</span>
+          <span> ${log.msgTimestamp ? 'messageTime：' + this.formatTimestamp(log.msgTimestamp) : '信令内time：' + this.formatTimestamp(log.ts)} </span>
+          ${log.rawLog ? `<div class="raw-log-container"><pre class="raw-log">${log.rawLog}</pre></div>` : ''}
         </div>`).join('')}
       </div>
     </div>`;
@@ -309,7 +350,7 @@ export class Visualizer {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
     const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
-    return `${year} ${month} ${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+    return `${year}-${month}-${day}/${hours}:${minutes}:${seconds}.${milliseconds}`;
   }
 
   /**
@@ -318,7 +359,11 @@ export class Visualizer {
    * @returns Mermaid序列图字符串
    */
   generateMermaidForCall(logs: ParsedLogInfo[]): string {
-    const sortedLogs = [...logs].sort((a, b) => a.ts - b.ts);
+    const sortedLogs = [...logs].sort((a, b) => {
+      const t1 = a.msgTimestamp || a.ts;
+      const t2 = b.msgTimestamp || b.ts;
+      return t1 - t2;
+    });
     if (sortedLogs.length === 0) return 'sequenceDiagram\n    Note over NoData: 无日志数据';
 
     let mermaid = 'sequenceDiagram\n';
@@ -337,8 +382,9 @@ export class Visualizer {
 
     // 添加信令交互
     sortedLogs.forEach(log => {
-      const time = this.formatTimestamp(log.ts);
-      mermaid += `  ${log.from}->>${log.to}: ${log.action} (${time})\n`;
+      const time = this.formatTimestamp(log.msgTimestamp || log.ts);
+      const timeDesc = log.msgTimestamp ? 'messageTime' : '信令内time';
+      mermaid += `  ${log.from}->>${log.to}: ${log.action} (${timeDesc}: ${time})\n`;
     });
 
     return mermaid;
