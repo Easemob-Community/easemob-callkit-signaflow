@@ -419,6 +419,72 @@ export class SignalParser {
   }
 
   /**
+   * 直接解析日志内容字符串
+   * @param logContent 日志内容字符串
+   * @returns 提取到的rtcCallWithAgora日志总数
+   */
+  parse(logContent: string): number {
+    const lines = logContent.split('\n');
+    let count = 0;
+
+    for (const line of lines) {
+      // 提取版本信息
+      if (line.includes('core version:')) {
+        const versionRegex = /core version:\s*(\S+)/;
+        const match = line.match(versionRegex);
+        if (match) {
+          this.coreVersion = match[1];
+        }
+      }
+      if (line.includes('git commit:')) {
+        const commitRegex = /git commit:\s*(\S+)/;
+        const match = line.match(commitRegex);
+        if (match) {
+          this.gitCommit = match[1];
+        }
+      }
+      
+      // 增加匹配条件：必须包含rtcCallWithAgora，并且是COMMAND类型的rtcCall信令或TEXT类型的邀请信令
+      if (line.includes('rtcCallWithAgora') && 
+          (line.includes('contents : [ { contenttype : COMMAND, action : rtcCall } ]') || 
+           (line.includes('contenttype : TEXT') && line.includes('key : action, type : 7, value : invite')))) {
+        
+        // 提取关键信息
+        const logInfo = this.extractLogInfo(line);
+        if (logInfo) {
+          this.rtcCallLogs.push(logInfo);
+          count++;
+          
+          // 按callId分组存储，并按时间戳排序
+          const callId = logInfo.callId;
+          if (!this.callIdToLogsMap.has(callId)) {
+            this.callIdToLogsMap.set(callId, []);
+          }
+          const logs = this.callIdToLogsMap.get(callId);
+          if (logs) {
+            logs.push(logInfo);
+            // 按msgTimestamp升序排序，如果msgTimestamp不存在则使用ts作为备选
+            logs.sort((a, b) => {
+              const t1 = a.msgTimestamp || a.ts;
+              const t2 = b.msgTimestamp || b.ts;
+              return t1 - t2;
+            });
+            this.callIdToLogsMap.set(callId, logs);
+          }
+        } else {
+          console.warn(`无法提取日志行的关键信息: ${line.substring(0, 100)}...`);
+        }
+      }
+    }
+
+    // 重新分类所有日志
+    this.reclassifyAllCalls();
+    
+    console.log(`从日志内容中提取了 ${count} 条rtcCallWithAgora日志`);
+    return count;
+  }
+
+  /**
    * 从目录中所有日志文件提取rtcCallWithAgora日志
    * @param logDir 日志目录路径
    * @returns 提取到的rtcCallWithAgora日志总数

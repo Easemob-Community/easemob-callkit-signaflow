@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
-import { ParsedLogInfo, SignalParser } from './SignalParser';
+import { ParsedLogInfo, SignalParser } from './SignalParser.js';
 
 const writeFile = promisify(fs.writeFile);
 
@@ -24,7 +24,7 @@ export class Visualizer {
    */
   generateHtml(): string {
     const statistics = this.parser.getCallTypeStatistics();
-    const allCalls = Array.from(this.parser.getCallIdToLogsMap().entries());
+    const allCalls: [string, ParsedLogInfo[]][] = Array.from(this.parser.getCallIdToLogsMap().entries());
 
     // HTML模板
     return `

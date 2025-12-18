@@ -1,7 +1,34 @@
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import multer from 'multer';
+import { setupApiRoutes } from './api/index.js';
+
+// 在ES模块中替代__dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// 配置multer中间件处理文件上传
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../temp'));
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 限制文件大小为50MB
+  }
+});
+
+// 将upload对象挂载到app上，以便在路由中使用
+app.locals.upload = upload;
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '../public')));
@@ -67,7 +94,7 @@ app.get('/', (req, res) => {
       <div class="upload-section">
         <h2>上传信令日志文件</h2>
         <form action="/api/visualize" method="post" enctype="multipart/form-data">
-          <input type="file" name="logFile" accept=".log,.txt" required>
+          <input type="file" name="logFile" accept=".log,.txt,.gz" required>
           <br>
           <label>
             报告格式: 
@@ -89,98 +116,8 @@ app.get('/', (req, res) => {
   `);
 });
 
-// API路由：可视化日志
-app.post('/api/visualize', (req, res) => {
-  res.json({
-    message: '可视化API已创建，具体实现将在后续添加',
-    received: {
-      format: req.body.format || 'html',
-      // file: req.file // 文件上传处理将在后续实现
-    }
-  });
-});
-
-// API路由：从Mermaid数据生成HTML
-app.post('/api/mermaid-to-html', async (req, res) => {
-  try {
-    const { mermaidContent, outputFileName } = req.body;
-    
-    if (!mermaidContent) {
-      return res.status(400).json({ error: '缺少mermaidContent参数' });
-    }
-    
-    // 生成HTML内容
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mermaid序列图可视化报告</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    h1 {
-      color: #007bff;
-      border-bottom: 2px solid #eee;
-      padding-bottom: 10px;
-    }
-    .mermaid-container {
-      background: #f5f5f5;
-      padding: 20px;
-      border-radius: 8px;
-      overflow-x: auto;
-      margin: 20px 0;
-    }
-  </style>
-</head>
-<body>
-  <h1>Mermaid序列图可视化报告</h1>
-  <div class="mermaid-container">
-    <div class="mermaid">${mermaidContent}</div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <script>
-    mermaid.initialize({ startOnLoad: true, theme: 'default' });
-  </script>
-</body>
-</html>
-    `;
-    
-    // 设置响应头
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `attachment; filename="${outputFileName || 'mermaid_report.html'}"`);
-    
-    // 返回HTML内容
-    res.send(htmlContent);
-    
-  } catch (error) {
-    console.error('生成HTML报告失败:', error);
-    res.status(500).json({ error: '生成HTML报告失败' });
-  }
-});
-
-// API路由：解析日志
-app.post('/api/parse', (req, res) => {
-  res.json({
-    message: '解析API已创建，具体实现将在后续添加',
-    received: req.body
-  });
-});
-
-// 健康检查路由
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString()
-  });
-});
+// 引入并配置所有API路由
+setupApiRoutes(app);
 
 // 启动服务器
 export function startServer(port: number = 3000) {
@@ -192,6 +129,6 @@ export function startServer(port: number = 3000) {
 }
 
 // 如果直接运行此文件，启动默认端口服务
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   startServer();
 }
