@@ -44,57 +44,59 @@ export class Visualizer {
       padding: 20px;
     }
     
-    /* 选项卡样式 */
-    .tab-container {
+
+    
+    /* 通话ID列表样式 */
+    .call-id-list {
       margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    
-    .tab-buttons {
+    .call-id-list ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
       display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    
-    .tab-btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      background: #e9ecef;
-      cursor: pointer;
-      font-size: 16px;
-      transition: background-color 0.3s;
-    }
-    
-    .tab-btn.active {
-      background: #007bff;
-      color: white;
-    }
-    
-    .tab-btn:hover:not(.active) {
-      background: #dee2e6;
-    }
-    
-    /* 搜索框样式 */
-    .search-container {
-      margin: 20px 0;
-      display: flex;
-      align-items: center;
+      flex-wrap: wrap;
       gap: 10px;
     }
-    
-    .search-input {
-      padding: 10px;
+    .call-id-list li {
+      background: white;
+      padding: 8px 15px;
+      border-radius: 5px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 16px;
-      flex: 1;
-      max-width: 400px;
+      transition: all 0.3s;
     }
-    
-    .search-input:focus {
-      outline: none;
+    .call-id-list li:hover {
+      background: #e9ecef;
       border-color: #007bff;
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    .call-id-list a {
+      text-decoration: none;
+      color: #007bff;
+      font-weight: 500;
+    }
+    /* 通话类型标识样式 */
+    .call-type-badge {
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .call-type-badge.oneToOne {
+      background: #d4edda;
+      color: #155724;
+    }
+    .call-type-badge.group {
+      background: #cce5ff;
+      color: #004085;
+    }
+    .call-type-badge.unknown {
+      background: #f8d7da;
+      color: #721c24;
     }
     h1 {
       color: #007bff;
@@ -202,57 +204,8 @@ export class Visualizer {
       color: #666;
       font-size: 12px;
     }
-    /* 选项卡样式 */
-    .tab-container {
-      margin: 20px 0;
-      border-bottom: 1px solid #eee;
-    }
-    .tab-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: -1px;
-    }
-    .tab-btn {
-      padding: 10px 20px;
-      border: 1px solid #ddd;
-      background: #f8f9fa;
-      border-radius: 5px 5px 0 0;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      color: #666;
-      transition: all 0.3s;
-    }
-    .tab-btn.active {
-      background: #fff;
-      border-bottom: 1px solid #fff;
-      color: #007bff;
-      border-top: 2px solid #007bff;
-    }
-    /* 搜索框样式 */
-    .search-container {
-      margin: 20px 0;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    .search-container label {
-      font-weight: 500;
-      color: #666;
-    }
-    .search-input {
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 14px;
-      width: 300px;
-      outline: none;
-      transition: border-color 0.3s;
-    }
-    .search-input:focus {
-      border-color: #007bff;
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-    }
+
+
     /* 通话类型显示控制 */
     .call-section.oneToOne { display: block; }
     .call-section.group { display: block; }
@@ -284,27 +237,25 @@ export class Visualizer {
 
   <h2>通话会话详情</h2>
   
-  <!-- 选项卡 -->
-  <div class="tab-container">
-    <div class="tab-buttons">
-      <button class="tab-btn active" data-tab="all">全部</button>
-      <button class="tab-btn" data-tab="oneToOne">一对一</button>
-      <button class="tab-btn" data-tab="group">群组</button>
-      <button class="tab-btn" data-tab="unknown">未知</button>
-    </div>
-  </div>
-  
-  <!-- 搜索框 -->
-  <div class="search-container">
-    <label for="callIdSearch">搜索通话ID:</label>
-    <input type="text" id="callIdSearch" class="search-input" placeholder="输入通话ID进行模糊搜索...">
+  <!-- 所有通话ID列表 -->
+  <div class="call-id-list">
+    <h3>所有通话ID</h3>
+    <ul>
+      ${allCalls.map(([callId]) => {
+        const callType = this.parser.getCallType(callId) || 'unknown';
+        const typeText = callType === 'oneToOne' ? '一对一' : callType === 'group' ? '群组' : '未知';
+        return `
+        <li><span class="call-type-badge ${callType}">[${typeText}]</span> <a href="#${callId}">${callId}</a></li>
+        `;
+      }).join('')}
+    </ul>
   </div>
   
   ${allCalls.map(([callId, logs]) => {
     const callType = this.parser.getCallType(callId) || 'unknown';
     const sortedLogs = [...logs].sort((a, b) => a.ts - b.ts);
     return `
-    <div class="call-section" data-callid="${callId}" data-calltype="${callType}">
+    <div class="call-section ${callType}" id="${callId}" data-callid="${callId}" data-calltype="${callType}">
       <div class="call-header">
         <h3>通话ID: ${callId}</h3>
         <div class="call-meta">
@@ -332,55 +283,11 @@ export class Visualizer {
 
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script>
-    mermaid.initialize({ startOnLoad: true, theme: 'default' });
-    
-    // 获取DOM元素
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const searchInput = document.getElementById('callIdSearch');
-    const callSections = document.querySelectorAll('.call-section');
-    
-    // 选项卡切换功能
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        // 移除所有按钮的active类
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        // 给当前按钮添加active类
-        button.classList.add('active');
-        // 触发过滤
-        filterCalls();
-      });
-    });
-    
-    // 搜索功能
-    searchInput.addEventListener('input', filterCalls);
-    
-    // 过滤通话会话的函数
-    function filterCalls() {
-      // 获取当前选中的选项卡
-      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-      // 获取搜索关键词
-      const searchTerm = searchInput.value.toLowerCase();
-      
-      // 遍历所有通话会话
-      callSections.forEach(section => {
-        const callId = section.dataset.callid.toLowerCase();
-        const callType = section.dataset.calltype;
-        
-        // 检查是否匹配选项卡和搜索关键词
-        const matchesTab = activeTab === 'all' || callType === activeTab;
-        const matchesSearch = callId.includes(searchTerm);
-        
-        // 显示或隐藏会话
-        if (matchesTab && matchesSearch) {
-          section.style.display = 'block';
-        } else {
-          section.style.display = 'none';
-        }
-      });
-      
-      // 重新渲染Mermaid图表
+    // 等待DOM加载完成后初始化Mermaid
+    document.addEventListener('DOMContentLoaded', function() {
+      mermaid.initialize({ theme: 'default' });
       mermaid.contentLoaded();
-    }
+    });
   </script>
 </body>
 </html>
