@@ -1,6 +1,6 @@
 {
   "name": "easemob-callkit-signaflow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "node编写的callkit信令跟踪可视化工具库",
   "main": "index.js",
   "type": "module",
