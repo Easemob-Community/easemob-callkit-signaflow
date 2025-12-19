@@ -351,6 +351,7 @@ export class Visualizer {
       <select id="ai-model-select">
         <option value="doubao-seed-1-8-251215">火山引擎-豆包</option>
         <option value="qwen-plus">通义千问</option>
+        <option value="qwen-long">通义千问Long</option>
       </select>
       <button id="save-ai-config">保存配置</button>
       <p id="ai-config-status" style="color: green; display: none;">配置已保存</p>
@@ -653,7 +654,7 @@ export class Visualizer {
       let result;
       
       // 根据不同模型设置API URL和请求格式
-      if (config.model === 'qwen-plus') {
+      if (config.model === 'qwen-plus' || config.model === 'qwen-long') {
         // 通义千问API
         apiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
         requestBody = {
@@ -661,7 +662,7 @@ export class Visualizer {
           messages: [
             {
               role: 'system',
-              content: '你是一个专业的音视频通话信令分析专家，请分析以下通话ID的信令日志，提供详细的分析报告，包括通话流程是否正常、可能存在的问题、优化建议等。'
+              content: '你是一个专业的音视频通话信令分析专家，请详细分析以下通话ID的信令日志，但回复需简洁，直指问题要害，重点说明通话流程是否正常、存在的核心问题及优化建议。'
             },
             {
               role: 'user',
@@ -733,7 +734,7 @@ export class Visualizer {
         }
         
         // 根据不同模型解析响应格式
-        if (config.model === 'qwen-plus') {
+        if (config.model === 'qwen-plus' || config.model === 'qwen-long') {
           // 通义千问响应格式
           result = data.choices[0].message.content;
         } else {
