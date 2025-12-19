@@ -244,11 +244,118 @@ export class Visualizer {
     .call-section.oneToOne { display: block; }
     .call-section.group { display: block; }
     .call-section.unknown { display: block; }
+    
+    /* AI分析配置区域样式 */
+    .ai-config-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      border: 1px solid #e9ecef;
+    }
+    .ai-config-form {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .ai-config-form label {
+      font-weight: 500;
+      color: #6c757d;
+    }
+    .ai-config-form input,
+    .ai-config-form select {
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .ai-config-form button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+    .ai-config-form button:hover {
+      background: #0056b3;
+    }
+    
+    /* AI分析按钮样式 */
+    .ai-analysis-button {
+      padding: 8px 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 10px 0;
+      transition: background-color 0.3s;
+    }
+    .ai-analysis-button:hover {
+      background: #218838;
+    }
+    .ai-analysis-button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+    
+    /* AI分析结果样式 */
+    .ai-analysis-result {
+      margin: 15px 0;
+      padding: 15px;
+      background: #e7f3ff;
+      border-left: 4px solid #007bff;
+      border-radius: 4px;
+      display: none;
+    }
+    .ai-analysis-result h5 {
+      margin-top: 0;
+      color: #007bff;
+    }
+    .ai-analysis-content {
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+    
+    /* 加载状态样式 */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0,123,255,.3);
+      border-radius: 50%;
+      border-top-color: #007bff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <h1>环信CallKit信令可视化报告</h1>
   <h2>SDK版本: ${this.parser.getCoreVersion() || '未知'} | Git Commit: ${this.parser.getGitCommit() || '未知'}</h2>
+  
+  <!-- AI分析配置区域 -->
+  <div class="ai-config-section">
+    <h3>AI分析配置</h3>
+    <div class="ai-config-form">
+      <label for="ai-api-key">AI API Key:</label>
+      <input type="password" id="ai-api-key" placeholder="输入AI模型API Key">
+      <select id="ai-model-select">
+        <option value="doubao-seed-1-8-251215">火山引擎-豆包</option>
+        <option value="qwen-plus">通义千问</option>
+      </select>
+      <button id="save-ai-config">保存配置</button>
+      <p id="ai-config-status" style="color: green; display: none;">配置已保存</p>
+    </div>
+  </div>
   
   <h2>整体统计</h2>
   <div class="statistics">
@@ -319,16 +426,337 @@ export class Visualizer {
           ${log.rawLog ? `<div class="raw-log-container"><pre class="raw-log">${log.rawLog}</pre></div>` : ''}
         </div>`).join('')}
       </div>
+      
+      <!-- AI分析部分 -->
+      <div class="ai-analysis-section">
+        <button class="ai-analysis-button" data-callid="${callId}">
+          <span class="btn-text">AI分析此通话</span>
+          <span class="loading-spinner" style="display: none;"></span>
+        </button>
+        <div class="ai-analysis-result" id="ai-result-${callId}">
+          <h5>AI分析结果</h5>
+          <div class="ai-analysis-content"></div>
+        </div>
+      </div>
     </div>`;
   }).join('')}
 
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script>
-    // 等待DOM加载完成后初始化Mermaid
+    // 等待DOM加载完成后初始化Mermaid和AI分析功能
     document.addEventListener('DOMContentLoaded', function() {
-      mermaid.initialize({ theme: 'default' });
-      mermaid.contentLoaded();
+      console.log('DOM加载完成，开始初始化Mermaid和AI分析功能');
+      try {
+        mermaid.initialize({ theme: 'default' });
+        mermaid.contentLoaded();
+        console.log('Mermaid初始化完成');
+        
+        // 初始化AI分析功能
+        initAiAnalysis();
+      } catch (error) {
+        console.error('初始化失败:', error);
+      }
     });
+    
+    // 初始化AI分析功能
+    function initAiAnalysis() {
+      console.log('开始初始化AI分析功能');
+      try {
+        // 检查浏览器环境
+        console.log('浏览器环境:', window.location.protocol);
+        console.log('localStorage可用:', typeof localStorage !== 'undefined');
+        
+        // 加载保存的AI配置
+        loadAiConfig();
+        
+        // 保存AI配置按钮事件
+        const saveBtn = document.getElementById('save-ai-config');
+        if (saveBtn) {
+          console.log('找到保存配置按钮:', saveBtn);
+          saveBtn.addEventListener('click', saveAiConfig);
+          console.log('已为保存配置按钮添加点击事件');
+        } else {
+          console.error('未找到保存配置按钮');
+          console.log('所有ID为save-ai-config的元素:', document.querySelectorAll('#save-ai-config'));
+        }
+        
+        // 为所有AI分析按钮添加事件
+        const aiButtons = document.querySelectorAll('.ai-analysis-button');
+        console.log('找到AI分析按钮数量:', aiButtons.length);
+        console.log('所有AI分析按钮:', aiButtons);
+        
+        if (aiButtons.length === 0) {
+          console.error('未找到任何AI分析按钮');
+          console.log('所有.ai-analysis-button元素:', document.querySelectorAll('.ai-analysis-button'));
+          return;
+        }
+        
+        aiButtons.forEach(button => {
+          button.addEventListener('click', handleAiAnalysisClick);
+          console.log('为按钮添加事件监听:', button.dataset.callid);
+        });
+        
+        console.log('AI分析功能初始化完成');
+      } catch (error) {
+        console.error('初始化AI分析功能失败:', error);
+        console.error('错误堆栈:', error.stack);
+      }
+    }
+    
+    // 加载AI配置
+    function loadAiConfig() {
+      const savedConfig = localStorage.getItem('aiAnalysisConfig');
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        document.getElementById('ai-api-key').value = config.apiKey || '';
+        document.getElementById('ai-model-select').value = config.model || 'doubao-seed-1-8-251215';
+      }
+    }
+    
+    // 保存AI配置
+    function saveAiConfig() {
+      const apiKey = document.getElementById('ai-api-key').value;
+      const model = document.getElementById('ai-model-select').value;
+      
+      const config = { apiKey, model };
+      localStorage.setItem('aiAnalysisConfig', JSON.stringify(config));
+      
+      // 显示保存成功提示
+      const statusElement = document.getElementById('ai-config-status');
+      statusElement.style.display = 'inline';
+      setTimeout(() => {
+        statusElement.style.display = 'none';
+      }, 2000);
+    }
+    
+    // 处理AI分析按钮点击
+    async function handleAiAnalysisClick(e) {
+      console.log('AI分析按钮点击事件触发:', e);
+      console.log('事件目标:', e.target);
+      console.log('事件目标类名:', e.target.className);
+      
+      try {
+        // 获取按钮元素，确保是点击了按钮本身
+        const button = e.target.closest('.ai-analysis-button');
+        if (!button) {
+          console.error('未找到AI分析按钮元素');
+          return;
+        }
+        
+        console.log('找到AI分析按钮元素:', button);
+        const callId = button.dataset.callid;
+        console.log('开始分析通话ID:', callId);
+        
+        // 禁用按钮并显示加载状态
+        button.disabled = true;
+        const btnText = button.querySelector('.btn-text');
+        const spinner = button.querySelector('.loading-spinner');
+        if (btnText) {
+          console.log('找到按钮文本元素:', btnText);
+          btnText.textContent = '分析中...';
+        } else {
+          console.error('未找到按钮文本元素');
+        }
+        
+        if (spinner) {
+          console.log('找到加载动画元素:', spinner);
+          spinner.style.display = 'inline-block';
+        } else {
+          console.error('未找到加载动画元素');
+        }
+        
+        // 获取AI配置
+        console.log('获取AI配置...');
+        const savedConfig = localStorage.getItem('aiAnalysisConfig');
+        if (!savedConfig) {
+          console.error('未找到保存的AI配置');
+          alert('请先配置AI API Key');
+          return;
+        }
+        
+        console.log('找到保存的AI配置:', savedConfig);
+        const config = JSON.parse(savedConfig);
+        if (!config.apiKey) {
+          console.error('AI API Key为空');
+          alert('请先输入AI API Key');
+          return;
+        }
+        
+        // 收集该通话的所有日志
+        console.log('收集通话ID为' + callId + '的日志...');
+        const callSection = document.getElementById(callId);
+        if (!callSection) {
+          throw new Error('未找到通话ID对应的元素: ' + callId);
+        }
+        
+        const logItems = callSection.querySelectorAll('.log-item');
+        console.log('找到日志条目数量:', logItems.length);
+        const logs = Array.from(logItems).map(item => {
+          const action = item.querySelector('.log-action')?.textContent || '';
+          const rawLog = item.querySelector('.raw-log')?.textContent || '';
+          return {
+            action,
+            rawLog
+          };
+        });
+        
+        console.log('收集到日志数量:', logs.length);
+        
+        // 调用AI分析
+        console.log('准备调用AI API...');
+        const analysisResult = await callAiApi(config, callId, logs);
+        console.log('AI API调用成功，结果:', analysisResult);
+        
+        // 显示分析结果
+        console.log('显示分析结果...');
+        const resultElement = document.getElementById('ai-result-' + callId);
+        if (resultElement) {
+          console.log('找到结果显示元素:', resultElement);
+          const contentDiv = resultElement.querySelector('.ai-analysis-content');
+          if (contentDiv) {
+            console.log('找到结果内容元素:', contentDiv);
+            contentDiv.textContent = analysisResult;
+          } else {
+            console.error('未找到结果内容元素');
+          }
+          resultElement.style.display = 'block';
+        } else {
+          console.error('未找到结果显示元素: ai-result-' + callId);
+        }
+        
+      } catch (error) {
+        console.error('AI分析失败:', error);
+        console.error('错误堆栈:', error.stack);
+        alert('AI分析失败: ' + (error.message || '未知错误'));
+      } finally {
+        // 恢复按钮状态
+        console.log('恢复按钮状态...');
+        const button = e.target.closest('.ai-analysis-button');
+        if (button) {
+          console.log('找到按钮元素以恢复状态:', button);
+          button.disabled = false;
+          const btnText = button.querySelector('.btn-text');
+          const spinner = button.querySelector('.loading-spinner');
+          if (btnText) btnText.textContent = 'AI分析此通话';
+          if (spinner) spinner.style.display = 'none';
+        }
+      }
+    }
+    
+    // 调用AI API
+    async function callAiApi(config, callId, logs) {
+      console.log('调用AI API，模型:', config.model);
+      console.log('AI API Key:', config.apiKey ? '已设置（长度: ' + config.apiKey.length + '）' : '未设置');
+      
+      let apiUrl;
+      let requestBody;
+      let result;
+      
+      // 根据不同模型设置API URL和请求格式
+      if (config.model === 'qwen-plus') {
+        // 通义千问API
+        apiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        requestBody = {
+          model: config.model,
+          messages: [
+            {
+              role: 'system',
+              content: '你是一个专业的音视频通话信令分析专家，请分析以下通话ID的信令日志，提供详细的分析报告，包括通话流程是否正常、可能存在的问题、优化建议等。'
+            },
+            {
+              role: 'user',
+              content: '通话ID: ' + callId + '\\n\\n信令日志:\\n' + JSON.stringify(logs, null, 2)
+            }
+          ]
+        };
+      } else {
+        // 火山引擎API格式
+        apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+        requestBody = {
+          model: config.model,
+          messages: [
+            {
+              content: [
+                {
+                  text: '你是一个专业的音视频通话信令分析专家，请分析以下通话ID的信令日志，提供详细的分析报告，包括通话流程是否正常、可能存在的问题、优化建议等。\\n\\n通话ID: ' + callId + '\\n\\n信令日志:\\n' + JSON.stringify(logs, null, 2),
+                  type: 'text'
+                }
+              ],
+              role: 'user'
+            }
+          ]
+        };
+      }
+      
+      console.log('API URL:', apiUrl);
+      console.log('请求参数:', JSON.stringify(requestBody, null, 2));
+      
+      // 发送请求
+      console.log('正在发送API请求...');
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + config.apiKey
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        console.log('API响应状态:', response.status);
+        console.log('API响应状态文本:', response.statusText);
+        
+        // 读取响应内容
+        const responseText = await response.text();
+        console.log('API响应文本:', responseText);
+        
+        if (!response.ok) {
+          try {
+            const errorData = JSON.parse(responseText);
+            throw new Error(errorData.error?.message || 'HTTP错误: ' + response.status);
+          } catch (e) {
+            throw new Error('HTTP错误: ' + response.status + '，响应内容: ' + responseText);
+          }
+        }
+        
+        // 解析响应数据
+        const data = JSON.parse(responseText);
+        console.log('解析后的API响应数据:', JSON.stringify(data, null, 2));
+        
+        // 验证响应格式
+        if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+          throw new Error('API响应格式错误：未找到有效结果');
+        }
+        
+        if (!data.choices[0].message || !data.choices[0].message.content) {
+          throw new Error('API响应格式错误：未找到消息内容');
+        }
+        
+        // 根据不同模型解析响应格式
+        if (config.model === 'qwen-plus') {
+          // 通义千问响应格式
+          result = data.choices[0].message.content;
+        } else {
+          // 火山引擎响应格式
+          if (!Array.isArray(data.choices[0].message.content) || data.choices[0].message.content.length === 0) {
+            throw new Error('API响应格式错误：内容格式不正确');
+          }
+          
+          if (!data.choices[0].message.content[0].text) {
+            throw new Error('API响应格式错误：未找到文本内容');
+          }
+          
+          result = data.choices[0].message.content[0].text;
+        }
+        
+        console.log('提取的分析结果:', result);
+        return result;
+      } catch (error) {
+        console.error('API请求失败:', error);
+        console.error('错误堆栈:', error.stack);
+        throw error;
+      }
+    }
   </script>
 </body>
 </html>
